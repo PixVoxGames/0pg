@@ -1,0 +1,17 @@
+{% for field in form %}
+<div class="form-group">
+    {% if field.type != "CSRFTokenField" %}
+        <label for="{{ field.id }}">{{ field.label }}</label>
+    {% endif %}
+    {% if field.errors %}
+        {{ field(class="form-control is-invalid") }}
+        <ul>
+        {% for error in field.errors %}
+            <li class="text-danger"><small class="help-block">{{ field.errors[0] }}</small></li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        {{ field(class="form-control") }}
+    {% endif %}
+</div>
+{% endfor %}

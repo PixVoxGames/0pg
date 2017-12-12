@@ -2,10 +2,14 @@
 
 import sys
 from game.models import create_db
+from admin.web import run_admin
 
 
 if len(sys.argv) == 1:
     print("invalid usage")
-else:
-    if sys.argv[1] == "createdb":
-        create_db()
+    exit(1)
+
+if sys.argv[1] == "createdb":
+    create_db()
+elif sys.argv[1] == "admin":
+    run_admin()

@@ -14,4 +14,7 @@ class Settings:
         host=env("DB_HOST"),
     )
 
+    SESSION_COOKIE_SECRET_KEY = env("SESSION_COOKIE_SECRET_KEY")
+    SECRET_KEY = env("SECRET_KEY")
+
 settings = Settings()

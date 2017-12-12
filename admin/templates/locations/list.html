@@ -1,0 +1,28 @@
+<div class="table-responsive">
+<table class="table table-striped">
+<thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+</thead>
+<tbody>
+{% for location in locations %}
+    <tr>
+      <td><a href="/locations/{{ location.id }}">{{ location.name }}</a></td>
+      {% if location.type == 0 %}
+          <td class="badge badge-primary">START</td>
+      {% elif location.type == 1 %}
+          <td class="badge badge-secondary">EMPTY</td>
+      {% elif location.type == 2 %}
+          <td class="badge badge-healing">HEALING</td>
+      {% elif location.type == 3 %}
+          <td class="badge badge-danger">FIGHT</td>
+      {% endif %}
+      <td><code>{{ location.description }}</code></td>
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+</div>

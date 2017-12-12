@@ -4,10 +4,22 @@ from conf import settings
 
 
 class Location(Model):
-    type = SmallIntegerField()
-    name = CharField(unique=True)
-    description = CharField(max_length=8192)
-    stats = BinaryJSONField()
+    START = 0
+    EMPTY = 1
+    FIGHT = 2
+    HEALING = 3
+
+    TYPES = (
+        (START, "START"),
+        (EMPTY, "EMPTY"),
+        (FIGHT, "FIGHT"),
+        (HEALING, "HEALING"),
+    )
+
+    type = SmallIntegerField(choices=TYPES)
+    name = CharField()
+    description = TextField()
+    enabled = BooleanField(default=False)
 
     class Meta:
         database = settings.DB
@@ -65,9 +77,9 @@ class Hero(Model):
 
 class Mob(Model):
     name = CharField()
+    type = SmallIntegerField()
     location = ForeignKeyField(Location)
-    hp_base = FloatField()
-    hp_value = FloatField()
+    hp = FloatField()
     state = BinaryJSONField()
 
     class Meta:
