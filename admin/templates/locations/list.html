@@ -16,9 +16,9 @@
       {% elif location.type == 1 %}
           <td class="badge badge-secondary">EMPTY</td>
       {% elif location.type == 2 %}
-          <td class="badge badge-healing">HEALING</td>
-      {% elif location.type == 3 %}
           <td class="badge badge-danger">FIGHT</td>
+      {% elif location.type == 3 %}
+          <td class="badge badge-success">HEALING</td>
       {% endif %}
       <td><code>{{ location.description }}</code></td>
     </tr>

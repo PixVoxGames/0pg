@@ -3,6 +3,23 @@ from playhouse.postgres_ext import BinaryJSONField
 from conf import settings
 
 
+class LocationGroup(Model):
+    TOWN = 0
+    DUNGEON = 1
+
+    TYPES = (
+        (TOWN, "TOWN"),
+        (DUNGEON, "DUNGEON")
+    )
+
+    type = SmallIntegerField(choices=TYPES)
+    name = CharField()
+    description = TextField()
+
+    class Meta:
+        database = settings.DB
+
+
 class Location(Model):
     START = 0
     EMPTY = 1
@@ -19,7 +36,14 @@ class Location(Model):
     type = SmallIntegerField(choices=TYPES)
     name = CharField()
     description = TextField()
-    enabled = BooleanField(default=False)
+    group = ForeignKeyField(LocationGroup, null=True, related_name="locations")
+    is_enabled = BooleanField(default=False)
+
+    def __hash__(self):
+        return hash(self.id)
+
+    def __eq__(self, other):
+        return self.id == other.id
 
     class Meta:
         database = settings.DB
@@ -105,6 +129,7 @@ class Action(Model):
 
 
 def create_db():
+    LocationGroup.create_table()
     Location.create_table()
     LocationGateway.create_table()
     Activity.create_table()

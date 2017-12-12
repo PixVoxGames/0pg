@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block head %}
+<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css"/>
+{% endblock %}
+{% block content %}
+<div class="text-center"><h1>{{ group.name }}</h1></div>
+<p>Description: <code>{{ group.description }}</code></p>
+<div class="text-right">
+    <div><a href="/locations/create?group={{ group.id }}">Create location inside group</a></div>
+</div>
+<div id="group-graph" style="border: 1px solid #eee; height: 700px;" class="container"></div>
+<div class="text-right">
+    <div><a href="#" id="adjacent-in-group-link">Create adjacent in group</a></div>
+    <div><a href="#" id="border-link">Create adjacent border</a></div>
+</div>
+<script type="text/javascript">
+    var nodes = new vis.DataSet([
+        {% for location in locations %}
+            { id: {{ location.id }}, label: "{{ location.name }}", color:
+                {% if location.type == 0 %}
+                  "#007bff"
+                {% elif location.type == 1 %}
+                  "#868e96"
+                {% elif location.type == 2 %}
+                  "#dc3545"
+                {% elif location.type == 3 %}
+                  "#28a745"
+                {% endif %}
+            },
+        {% endfor %}
+
+        {% for border in borders %}
+            { id: {{ border.id }}, label: "{{ border.name }}", color: "#ffc107" },
+        {% endfor %}
+    ])
+
+    var edges = new vis.DataSet([
+        {% for edge in edges %}
+            { from: {{ edge[0] }}, to: {{ edge[1] }} },
+        {% endfor %}
+    ])
+
+    var container = document.getElementById("group-graph");
+    var data = {
+        nodes: nodes,
+        edges: edges
+    };
+    var options = {};
+    var network = new vis.Network(container, data, options);
+
+    network.on("selectNode", function (params) {
+        var id = this.getNodeAt(params.pointer.DOM);
+        document.getElementById("adjacent-in-group-link").href = "/locations/create?group={{ group.id }}&adj=" + id;
+        document.getElementById("border-link").href = "/locations/create?adj=" + id;
+    });
+
+    network.on("doubleClick", function (params) {
+        window.location = "/locations/" + this.getNodeAt(params.pointer.DOM);
+    });
+</script>
+{% endblock %}

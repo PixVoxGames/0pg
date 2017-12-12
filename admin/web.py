@@ -36,35 +36,93 @@ def locations_index():
 
 @app.route("/locations/create", methods=["GET", "POST"])
 def locations_create():
-    from_id = request.args.get("from")
-    to_id = request.args.get("to")
+    adj_id = request.args.get("adj")
+    group_id = request.args.get("group")
     location = Location(state={})
     form = LocationForm()
     if request.method == "POST" and form.validate_on_submit():
         form.populate_obj(location)
-        location.save()
-        if from_id:
-            from_location = Location.select().where(Location.id == int(from_id))
-            LocationGateway.create(from_location=from_location, to_location=location, condition={})
-        if to_id:
-            to_location = Location.select().where(Location.id == int(to_id))
-            LocationGateway.create(from_location=location, to_location=to_location, condition={})
+        with settings.DB.atomic():
+            if group_id:
+                group = LocationGroup.select().where(LocationGroup.id == int(group_id))
+                location.group = group
+            location.save()
+            if adj_id:
+                adj_location = Location.select().where(Location.id == int(adj_id))
+                LocationGateway.create(from_location=adj_location, to_location=location, condition={})
+                LocationGateway.create(from_location=location, to_location=adj_location, condition={})
         return redirect(f"/locations/{location.id}")
     return render("locations/create.html", {
         "form": form,
-        "from_location": from_id,
-        "to_location": to_id
+        "adj_id": adj_id,
+        "group_id": group_id,
     })
 
 @app.route("/locations/<int:lid>", methods=["GET", "POST"])
 def locations_detail(lid):
     location = Location.select().where(Location.id == lid).get()
-    exits = list(map(lambda x: x.to_location, location.exits))
-    entries = list(map(lambda x: x.from_location, location.entries))
+    adjacent = list(map(lambda x: x.to_location, location.exits))
     return render("locations/detail.html", {
         "location": location,
-        "exits": exits,
-        "entries": entries,
+        "adjacent": adjacent,
+    })
+
+@app.route("/locations/<int:lid>/edit", methods=["GET", "POST"])
+def locations_edit(lid):
+    location = Location.select().where(Location.id == lid).get()
+    form = LocationForm(obj=location)
+    if request.method == "POST" and form.validate_on_submit():
+        form.populate_obj(location)
+        location.save()
+        return redirect(f"/locations/{location.id}")
+    return render("locations/edit.html", {
+        "form": form
+    })
+
+@app.route("/groups/create", methods=["GET", "POST"])
+def groups_create():
+    group = LocationGroup(state={})
+    form = LocationGroupForm()
+    if request.method == "POST" and form.validate_on_submit():
+        form.populate_obj(group)
+        group.save()
+        return redirect(f"/groups/{group.id}")
+    return render("groups/create.html", {
+        "form": form,
+    })
+
+@app.route("/groups/")
+def groups_index():
+    groups = LocationGroup.select()
+    return render("groups/index.html", {
+        "groups": groups,
+        "form": form,
+    })
+
+@app.route("/groups/<int:gid>", methods=["GET", "POST"])
+def groups_detail(gid):
+    group = LocationGroup.select().where(LocationGroup.id == gid).get()
+    locations = Location.select().where(Location.group == group)
+    edges = set()
+    borders = set()
+
+    def add_edge(edge, end):
+        if edge:
+            if end.group != group:
+                borders.add(end)
+            edges.add(tuple(sorted((edge.from_location.id, edge.to_location.id))))
+
+    for loc in locations:
+        edge = LocationGateway.select().where(LocationGateway.from_location == loc).first()
+        add_edge(edge, edge.to_location)
+        edge = LocationGateway.select().where(LocationGateway.to_location == loc).first()
+        add_edge(edge, edge.from_location)
+
+    return render("groups/detail.html", {
+        "group": group,
+        "locations": locations,
+        "edges": edges,
+        "borders": borders
     })
 
 def run_admin():

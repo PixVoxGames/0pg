@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
-<form method="POST" enctype="multipart/form-data" action="?from={{ from_location or '' }}&to={{ to_location or '' }}">
+<form method="POST" enctype="multipart/form-data" action="?adj={{ adj_id or '' }}&group={{ group_id or '' }}">
 {% include "form.html" %}
 <input class="btn btn-primary" type="submit" value="Create">
 </form>

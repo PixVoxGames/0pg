@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h4><a href="/groups/create">Create group</a></h4>
+<div class="table-responsive">
+<table class="table table-striped">
+<thead>
+    <tr>
+      <th>Name</th>
+      <th>Type</th>
+      <th>Description</th>
+    </tr>
+</thead>
+<tbody>
+{% for group in groups %}
+    <tr>
+      <td><a href="/groups/{{ group.id }}">{{ group.name }}</a></td>
+      {% if group.type == 0 %}
+          <td>TOWN</td>
+      {% elif group.type == 1 %}
+          <td>DUNGEON</td>
+      {% endif %}
+      <td><code>{{ group.description }}</code></td>
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}

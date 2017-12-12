@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="text-center"><h1>{{ location.name }}</h1></div>
-<p class="text-center">
-<button type="submit" class="btn btn-primary" onclick="window.location='/locations/create?to={{ location.id }}'">Add entry</button>
-<button type="submit" class="btn btn-secondary" onclick="window.location='/locations/create?from={{ location.id }}'">Add exit</button>
-</p>
+<div class="text-right">
+    <div><a href="/locations/{{ location.id }}/edit">Edit</a></div>
+    <div><a href="/locations/create?adj={{ location.id }}">Create adjacent</a></div>
+</div>
 <div class="table-responsive">
 <table class="table table-striped">
     <tbody>
@@ -12,8 +12,6 @@
         <td>ID</td>
         <td>
             {{ location.id }}
-            {% if not location.exits %}<span class="badge badge-warning">DEADEND</span>{% endif %}
-            {% if not location.entries and location.type != 0 %}<span class="badge badge-warning">UNREACHABLE</span>{% endif %}
         </td>
     </tr>
     <tr>
@@ -24,41 +22,35 @@
             {% elif location.type == 1 %}
               <span class="badge badge-secondary">EMPTY</span>
             {% elif location.type == 2 %}
-              <span class="badge badge-success">HEALING</span>
-            {% elif location.type == 3 %}
               <span class="badge badge-danger">FIGHT</span>
+            {% elif location.type == 3 %}
+              <span class="badge badge-success">HEALING</span>
             {% endif %}
         </td>
     </tr>
+    {% if location.group %}
+        <tr>
+            <td>Group</td>
+            <td>
+                <a href="/groups/{{ location.group.id }}">{{ location.group.name }}</a>
+            </td>
+        </tr>
+    {% endif %}
     <tr>
         <td>Desription</td>
         <td><code>{{ location.description }}</code></td>
     </tr>
-    {% if exits %}
-        <tr>
-            <td>Exits</td>
-            <td>
-                <ul>
-                    {% for exit in exits %}
-                        <li><a href="/locations/{{ exit.id }}">{{ exit.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            </td>
-        </tr>
-    {% endif %}
-    {% if entries %}
-        <tr>
-            <td>Entries</td>
-            <td>
-                <ul>
-                    {% for entry in entries %}
-                        <li><a href="/locations/{{ entry.id }}">{{ entry.name }}</a></li>
-                    {% endfor %}
-                </ul>
-            </td>
-        </tr>
-    {% endif %}
     </tbody>
 </table>
 </div>
+{% if adjacent %}
+<p>
+    <h4>Adjacent locations</h4>
+        <ul>
+            {% for location in adjacent %}
+                <li><a href="/locations/{{ location.id }}">{{ location.name }} {% if location.town %} {{ location.town }} {% endif %}</a></li>
+            {% endfor %}
+        </ul>
+</p>
+{% endif %}
 {% endblock %}
