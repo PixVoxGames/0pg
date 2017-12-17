@@ -12,6 +12,7 @@ class Settings:
         user=env("DB_USER"),
         password=env("DB_PASSWORD"),
         host=env("DB_HOST"),
+        autorollback=True
     )
 
     SESSION_COOKIE_SECRET_KEY = env("SESSION_COOKIE_SECRET_KEY")

@@ -1,3 +1,4 @@
+import datetime
 from peewee import *
 from playhouse.postgres_ext import BinaryJSONField
 from conf import settings
@@ -45,6 +46,9 @@ class Location(Model):
     def __eq__(self, other):
         return self.id == other.id
 
+    def __str__(self):
+        return self.name
+
     class Meta:
         database = settings.DB
 
@@ -62,17 +66,15 @@ class LocationGateway(Model):
 
 
 class Activity(Model):
-    type = SmallIntegerField()
-    start_time = DateTimeField()
-    duration = IntegerField()
+    RESPAWN = 0
 
-    class Meta:
-        database = settings.DB
+    TYPES = (
+        (RESPAWN, "RESPAWN"),
+    )
 
-
-class FloatStat(Model):
-    value = FloatField()
-    base = FloatField()
+    type = SmallIntegerField(choices=TYPES)
+    start_time = DateTimeField(default=datetime.datetime.now)
+    duration = IntegerField(default=0)
 
     class Meta:
         database = settings.DB
@@ -85,15 +87,15 @@ class Hero(Model):
     gold = IntegerField(default=0)
     magic_exp = IntegerField(default=0)
     sword_exp = IntegerField(default=0)
-    hp_base = FloatField()
-    hp_value = FloatField()
-    mana_base = FloatField()
-    mana_value = FloatField()
-    last_update = DateTimeField()
+    hp_base = FloatField(default=0)
+    hp_value = FloatField(default=0)
+    mana_base = FloatField(default=0)
+    mana_value = FloatField(default=0)
+    last_update = DateTimeField(default=datetime.datetime.now)
 
     chat_id = IntegerField()
-    registration_time = DateTimeField()
-    last_message_at = DateTimeField()
+    registration_time = DateTimeField(default=datetime.datetime.now)
+    last_message_at = DateTimeField(null=True)
 
     class Meta:
         database = settings.DB
@@ -112,8 +114,7 @@ class Mob(Model):
 
 class Item(Model):
     type = SmallIntegerField()
-    owner = ForeignKeyField(Hero)
-    state = BinaryJSONField()
+    owner = ForeignKeyField(Hero, related_name="items")
 
     class Meta:
         database = settings.DB
@@ -129,12 +130,12 @@ class Action(Model):
 
 
 def create_db():
-    LocationGroup.create_table()
-    Location.create_table()
-    LocationGateway.create_table()
-    Activity.create_table()
-    FloatStat.create_table()
-    Hero.create_table()
-    Mob.create_table()
-    Item.create_table()
-    Action.create_table()
+    with settings.DB.atomic():
+        LocationGroup.create_table()
+        Location.create_table()
+        LocationGateway.create_table()
+        Activity.create_table()
+        Hero.create_table()
+        Mob.create_table()
+        Item.create_table()
+        Action.create_table()

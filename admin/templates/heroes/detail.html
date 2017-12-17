@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="text-center"><h3>{{ hero.name }}</h3></div>
+<div class="text-right">
+    <div>
+        <a href="/heroes/{{ hero.id }}/new-activity">Change activity</a>,
+        <a href="">change location</a>,
+        <a href="/heroes/{{ hero.id }}/add-item">add item</a>
+    </div>
+</div>
+<div class="table-responsive">
+<table class="table table-striped">
+<tbody>
+<tr>
+    <td>ID</td>
+    <td>{{ hero.id }}</td>
+</tr>
+<tr>
+    <td>Activity</td>
+    <td>{{ dict(hero.activity.TYPES)[hero.activity.type] }} {% if hero.activity %} ({{ hero.activity.duration - (now - hero.activity.start_time).seconds }} seconds left) {% endif %}</td>
+</tr>
+<tr>
+    <td>Location</td>
+    <td><a href="/locations/{{ hero.location.id }}">{{ hero.location }}</a></td>
+</tr>
+<tr>
+    <td>HP/Mana</td>
+    <td><span class="text-danger font-weight-bold">{{ hero.hp_value }}</span>/<span class="text-primary font-weight-bold">{{ hero.mana_value }}</span></td>
+</tr>
+<tr>
+    <td>Base HP/Base Mana</td>
+    <td><span class="text-danger font-weight-bold">{{ hero.hp_base }}</span>/<span class="text-primary font-weight-bold">{{ hero.mana_base }}</span></td>
+</tr>
+<tr>
+    <td>Gold</td>
+    <td><span class="text-warning font-weight-bold">{{ hero.gold }}</span></td>
+</tr>
+<tr>
+    <td>Chat id</td>
+    <td>{{ hero.chat_id }}</td>
+</tr>
+<tr>
+    <td>Registered at</td>
+    <td>{{ hero.registration_time }}</td>
+</tr>
+<tr>
+    <td>Last message at</td>
+    <td>{{ hero.last_message_at }}</td>
+</tr>
+<tr>
+    <td>Last update at</td>
+    <td>{{ hero.last_message_at }}</td>
+</tr>
+</tbody>
+</table>
+<h2>Inventory</h2>
+<ul>
+{% for item in hero.items %}
+    <li><a href="/items/{{ item.id }}">{{ item.type }}</a></li>
+{% endfor %}
+</ul>
+</div>
+{% endblock %}

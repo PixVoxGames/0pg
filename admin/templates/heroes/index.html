@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="table-responsive">
+<table class="table table-striped">
+<thead>
+    <tr>
+      <th>Name</th>
+      <th>Activity</th>
+      <th><span class="text-danger">HP</span>/<span class="text-primary">Mana</span>/<span class="text-warning">Gold</span></th>
+    </tr>
+</thead>
+<tbody>
+{% for hero in heroes %}
+    <tr>
+      <td><a href="/heroes/{{ hero.id }}">{{ hero.name }}</a></td>
+      <td></td>
+      <td>
+          <span class="text-danger font-weight-bold">{{ hero.hp_value }}</span>/<span class="text-primary font-weight-bold">{{ hero.mana_value }}</span>/<span class="text-warning font-weight-bold">{{ hero.gold }}</span>
+      </td>
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endblock %}
