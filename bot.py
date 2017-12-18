@@ -30,29 +30,25 @@ def register(bot, update):
                 location=Location.get(type=Location.START),
                 user_id=update.effective_user.id,
                 state=HeroState.get(name='IDLE'))
-    return actions(bot, update, hero)
+    actions(bot, update, hero)
+    return State.INTERNAL
 
+available_actions = {Location.START: ["Travel"],
+                        Location.FIGHT: ["Fight", "Leave"]}
 def actions(bot, update, hero):
-    replies = ReplyKeyboardMarkup([[action.to_state.name for action in hero.state.actions]],
+    replies = ReplyKeyboardMarkup([available_actions[hero.location.type]],
                                     one_time_keyboard=True,
                                     resize_keyboard=True)
     update.message.reply_text("What's your path?",
                                 reply_markup=replies)
-    return State.INTERNAL
 
 def handle_actions(bot, update, hero):
     query = update.message.text
-    try:
-        destination = HeroState.get(name=query)
-        source = hero.state
-        HeroStateTransition.get(from_state=source, to_state=destination)
-    except (Location.DoesNotExist, LocationGateway.DoesNotExist):
+    if query not in available_actions[hero.location.type]:
         update.message.reply_text(f"You can't do {query} from here")
         return actions(bot, update, hero)
-    hero.update(state=destination).execute()
-    if query == 'TRAVEL':
+    if query == 'Travel' or query == 'Leave':
         return travel(bot, update, hero)
-    return State.INTERNAL
 
 
 def travel(bot, update, hero):
@@ -62,7 +58,8 @@ def travel(bot, update, hero):
                                     resize_keyboard=True)
     update.message.reply_text("Where do you want to go?",
                                 reply_markup=actions)
-    return State.INTERNAL
+    hero.state = HeroState.get(name='TRAVEL')
+    hero.save()
 
 def handle_travel(bot, update, hero):
     destination = update.message.text
@@ -78,7 +75,7 @@ def handle_travel(bot, update, hero):
     hero.save()
     return actions(bot, update, hero)
 
-def fight(bot, update):
+def fight(bot, update, hero):
     pass
 
 def reactor(bot, update):
