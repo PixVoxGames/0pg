@@ -8,6 +8,7 @@ from game.models import Mob, MobInstance, ItemInstance
 from peewee import IntegrityError
 import logging
 import random
+import datetime
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -73,14 +74,18 @@ def travel(bot, update, hero, job_queue):
 
 def handle_travel(bot, update, hero, job_queue):
     destination = update.message.text
-    try:
-        destination = Location.get(name=destination)
-        source = hero.location
-        LocationGateway.get(from_location=source, to_location=destination)
-    except (Location.DoesNotExist, LocationGateway.DoesNotExist):
+
+    new_location = None
+    for dest in hero.location.exits:
+        if dest.to_location.name == destination:
+            new_location = dest.to_location
+            break
+
+    if new_location is None:
         update.message.reply_text(f"You can't travel to {destination} from here")
         return travel(bot, update, hero, job_queue)
-    hero.location = destination
+
+    hero.location = new_location
     hero.state = HeroState.get(name='IDLE')
     hero.save()
     if destination.type == Location.FIGHT:
@@ -159,7 +164,14 @@ def show_inventory(bot, update, hero):
 
 @registered
 def reactor(bot, update, hero, job_queue):
-    handlers[hero.state.name](bot, update, hero, job_queue)
+    if hero.activity:
+        if hero.activity.type == Activity.RESPAWN:
+            remaining = (hero.activity.start_time + hero.activity.duration) - datetime.datetime.now()
+            assert remaining >= 0
+            update.message.reply_text("Your hero is dead. Respawn in {remaining} seconds")
+        assert False
+    else:
+        handlers[hero.state.name](bot, update, hero, job_queue)
 
 handlers = {'IDLE': handle_actions,
             'TRAVEL': handle_travel,
