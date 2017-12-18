@@ -115,7 +115,7 @@ def fight(bot, job):
                         reply_markup=ReplyKeyboardMarkup([["Attack", "Guard", "Run away"]],
                         resize_keyboard=True))
 
-def on_kill(bot, update, hero, mob):
+def on_kill(bot, update, hero, mob, job_queue):
     update.message.reply_text(f"You killed {mob.type.name}")
     hero.state = HeroState.get(name='IDLE')
     hero.attacked_by = None
@@ -127,6 +127,7 @@ def on_kill(bot, update, hero, mob):
                                                 owner=hero,
                                                 usages_left=item.usages)
             update.message.reply_text(f"You got {item.title}")
+    job_queue.run_once(fight, 5, context=hero.id)
     actions(bot, update, hero)
 
 def handle_fight(bot, update, hero, job_queue):
@@ -136,7 +137,7 @@ def handle_fight(bot, update, hero, job_queue):
         hero_dmg = hero.level * 10
         update.message.reply_text(f"You hit {mob.type.name} with {hero_dmg} dmg")
         if mob.hp - hero_dmg <= 0:
-            return on_kill(bot, update, hero, mob)
+            return on_kill(bot, update, hero, mob, job_queue)
         mob.hp -= hero_dmg
         mob.save()
 
