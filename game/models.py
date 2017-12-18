@@ -187,6 +187,7 @@ class ShopSlot(Model):
 
     class Meta:
         database = settings.DB
+        primary_key = CompositeKey("location", "item")
 
 
 class Action(Model):

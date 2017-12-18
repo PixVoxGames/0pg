@@ -1,4 +1,5 @@
 from envparse import env
+from conf import settings
 from enum import Enum, auto
 from functools import wraps
 from telegram import ReplyKeyboardMarkup
@@ -199,9 +200,11 @@ def handle_fight(bot, update, hero, job_queue):
 
 
 def shop_actions(bot, update, hero):
+    instances = ItemInstance.select(ItemInstance.type).distinct().where(ItemInstance.owner == hero)
     actions = ReplyKeyboardMarkup(
         [
             [f"Buy '{slot.item.title}'" for slot in hero.location.shop_slots],
+            [f"Sell '{instance.type.title}'" for instance in instances],
             ["Leave"]
         ],
         one_time_keyboard=True,
@@ -222,7 +225,6 @@ def handle_shopping(bot, update, hero, job_queue):
     if len(action) != 2:
         update.message.reply_text("I didn't understood you")
         return shop_actions(bot, update, hero)
-
     action, request = action
     try:
         request = request[1:-1]
@@ -230,10 +232,12 @@ def handle_shopping(bot, update, hero, job_queue):
     except Item.DoesNotExist:
         update.message.reply_text(f"Cannot find item '{request}'")
     else:
+        shop_location = hero.location
         if action.lower() == "buy":
             updated = ShopSlot.update(count=ShopSlot.count - 1).where(
                 (ShopSlot.count > 0) &
-                (ShopSlot.item == requested_item)
+                (ShopSlot.item == requested_item) &
+                (ShopSlot.location == shop_location)
             ).execute()
             if updated == 1:
                 slot = ShopSlot.get(item=requested_item)
@@ -250,18 +254,41 @@ def handle_shopping(bot, update, hero, job_queue):
                     update.message.reply_text(f"You bought '{item.type.title}'")
                     if slot.count == 0:
                         slot.delete_instance()
-                    hero = Hero.get(id=hero.id)
                 else:
                     update.message.reply_text(
                         f"You don't have enough money, you have: {hero.gold}, needed: {slot.price}"
                     )
-                    ShopSlot.update(count=ShopSlot.count + 1).where(ShopSlot.id == slot.id).execute()
+                    ShopSlot.update(count=ShopSlot.count + 1).where(
+                        (ShopSlot.item == requested_item) &
+                        (ShopSlot.location == shop_location)
+                    ).execute()
             else:
                 update.message.reply_text(f"Shop has no item '{request}'")
         elif action.lower() == "sell":
-            pass
+            item_inst = None
+            for item in hero.items:
+                if item.type == requested_item:
+                    item_inst = item
+                    break
+            if item_inst is None:
+                update.message.reply_text(f"You don't have '{requested_item.title}'")
+            else:
+                _, created = ShopSlot.get_or_create(item=requested_item, location=shop_location, defaults={
+                    "price": item_inst.type.price,
+                    "count": 1
+                })
+                if not created:
+                    with settings.DB.atomic():
+                        ShopSlot.update(count=ShopSlot.count + 1).where(
+                            (ShopSlot.item == requested_item) &
+                            (ShopSlot.location == shop_location)
+                        ).execute()
+                        item_inst.delete_instance()
+                        Hero.update(gold=Hero.gold + item_inst.type.price).where(Hero.id == hero.id).execute()
+                update.message.reply_text(f"You sold '{item_inst.type.title}'")
         else:
             update.message.reply_text("I didn't understood you")
+    hero = Hero.get(id=hero.id)
     return shop_actions(bot, update, hero)
 
 @registered
