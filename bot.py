@@ -2,7 +2,7 @@ from envparse import env
 from enum import Enum, auto
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
-from game.models import Hero, HeroState, Location
+from game.models import Hero, HeroState, HeroStateTransition, Location
 import locations.town
 import locations.dungeon
 import logging
@@ -32,8 +32,7 @@ def register(bot, update):
                 location=Location.get(type=Location.START),
                 user_id=update.effective_user.id,
                 state=HeroState.get(name='IDLE'))
-    actions(bot, update, hero)
-    return State.INTERNAL
+    return actions(bot, update, hero)
 
 def actions(bot, update, hero):
     replies = ReplyKeyboardMarkup([[action.to_state.name for action in hero.state.actions]],
@@ -41,9 +40,35 @@ def actions(bot, update, hero):
                                     resize_keyboard=True)
     update.message.reply_text("What's your path?",
                                 reply_markup=replies)
+    return State.INTERNAL
 
-def travel(bot, update):
-    pass
+def handle_actions(bot, update, hero):
+    query = update.message.text
+    try:
+        destination = HeroState.get(name=query)
+        source = hero.state
+        HeroStateTransition.get(from_state=source, to_state=destination)
+    except (Location.DoesNotExist, LocationGateway.DoesNotExist):
+        update.message.reply_text(f"You can't do {query} from here")
+        return actions(bot, update, hero)
+    hero.update(state=destination).execute()
+    if query == 'TRAVEL':
+        return travel(bot, update, hero)
+    return State.INTERNAL
+
+
+def travel(bot, update, hero):
+    paths = hero.location.exits
+    actions = ReplyKeyboardMarkup([[path.to_location.name for path in paths]],
+                                    one_time_keyboard=True,
+                                    resize_keyboard=True)
+    update.message.reply_text("Where do you want to go?",
+                                reply_markup=actions)
+    return State.INTERNAL
+
+def handle_travel(bot, update, hero):
+    update.message.reply_text(f"You want to go {update.message.text}")
+    return State.INTERNAL
 
 def fight(bot, update):
     pass
@@ -56,8 +81,8 @@ def reactor(bot, update):
     handlers[hero.state.name](bot, update, hero)
     return State.INTERNAL
 
-handlers = {'IDLE': actions,
-            'TRAVEL': travel,
+handlers = {'IDLE': handle_actions,
+            'TRAVEL': handle_travel,
             'FIGHT': fight}
 
 updater = Updater(env("API_TOKEN"))

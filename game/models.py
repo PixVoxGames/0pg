@@ -57,7 +57,7 @@ class Location(Model):
 class LocationGateway(Model):
     from_location = ForeignKeyField(Location, related_name="exits")
     to_location = ForeignKeyField(Location, related_name="entries")
-    condition = BinaryJSONField()
+    condition = BinaryJSONField(null=True)
 
     class Meta:
         database = settings.DB
@@ -208,5 +208,9 @@ def create_hero_actions():
 
 def create_world():
     with settings.DB.atomic():
-        Location.create(type=Location.START, name="The First Town",
+        first_city = Location.create(type=Location.START, name="The First Town",
                         description="Every adventure starts there.")
+        cave = Location.create(type=Location.FIGHT, name="Goblin's Cave",
+                        description="Small creatures lurk within.")
+        LocationGateway.create(from_location=first_city, to_location=cave)
+        LocationGateway.create(to_location=first_city, from_location=cave)
