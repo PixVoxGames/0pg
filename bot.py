@@ -6,7 +6,7 @@ from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
 from game.models import Mob, MobInstance, ItemInstance, Activity, ShopSlot, Item
-from peewee import IntegrityError
+from peewee import IntegrityError, fn
 import logging
 import random
 import datetime
@@ -63,8 +63,11 @@ def actions(bot, update, hero):
     replies = ReplyKeyboardMarkup([available_actions[hero.location.type]],
                                     one_time_keyboard=True,
                                     resize_keyboard=True)
-    update.message.reply_text("What's your path?",
-                                reply_markup=replies)
+    bot.send_message(
+        text="What's your path?",
+        chat_id=hero.chat_id,
+        reply_markup=replies
+    )
 
 def handle_actions(bot, update, hero, job_queue):
     query = update.message.text
@@ -114,9 +117,12 @@ def revive(bot, job):
     hero.hp_value = hero.hp_base
     activity = hero.activity
     hero.activity = None
+    hero.state = HeroState.get(name="IDLE")
+    hero.location = Location.select().where(Location.type == Location.START).order_by(fn.Random()).limit(1).get()
     hero.save()
     activity.delete_instance()
-    bot.send_message(chat_id=hero.chat_id, text="You are alive!")
+    bot.send_message(chat_id=hero.chat_id, text=f"You are respawned in {hero.location.name}!")
+    return actions(bot, None, hero)
 
 def fight(bot, job):
     hero = Hero.get(id=job.context)
@@ -148,13 +154,12 @@ def on_kill(bot, update, hero, mob, job_queue):
     actions(bot, update, hero)
 
 def on_death(bot, update, hero, mob, job_queue):
-    update.message.reply_text(f"You were killed by {mob.type.name}\nRespawn in 30 secs")
-    hero.activity = Activity.create(type=Activity.RESPAWN, duration=30)
+    update.message.reply_text(f"You were killed by {mob.type.name}\nRespawn in {hero.respawn_time} secs")
+    hero.activity = Activity.create(type=Activity.RESPAWN, duration=hero.respawn_time)
     hero.attacked_by = None
-    hero.state = HeroState.get(name='IDLE')
     hero.save()
     mob.delete_instance()
-    job_queue.run_once(revive, 30, context=hero.id)
+    job_queue.run_once(revive, hero.respawn_time, context=hero.id)
 
 def handle_fight(bot, update, hero, job_queue):
     action = update.message.text

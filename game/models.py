@@ -142,6 +142,10 @@ class Hero(Model):
     def level(self):
         return self.xp_value // 1000 + 1
 
+    @property
+    def respawn_time(self):
+        return 5 + 5 * self.level
+
     class Meta:
         database = settings.DB
 
