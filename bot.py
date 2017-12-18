@@ -228,11 +228,12 @@ def handle_shopping(bot, update, hero, job_queue):
                     update.message.reply_text(f"You bought '{item.type.title}'")
                     if slot.count == 0:
                         slot.delete_instance()
+                    hero = Hero.get(id=hero.id)
                 else:
                     update.message.reply_text(
                         f"You don't have enough money, you have: {hero.gold}, needed: {slot.price}"
                     )
-                    ShopSlot.update(count=ShopSlot.count + 1).where(ShopSlot.id == slot.id)
+                    ShopSlot.update(count=ShopSlot.count + 1).where(ShopSlot.id == slot.id).execute()
             else:
                 update.message.reply_text(f"Shop has no item '{request}'")
         elif action.lower() == "sell":
