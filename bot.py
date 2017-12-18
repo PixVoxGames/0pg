@@ -49,6 +49,8 @@ def handle_actions(bot, update, hero):
         return actions(bot, update, hero)
     if query == 'Travel' or query == 'Leave':
         return travel(bot, update, hero)
+    elif query == 'Fight':
+        return fight(bot, update, hero)
 
 
 def travel(bot, update, hero):
@@ -78,6 +80,9 @@ def handle_travel(bot, update, hero):
 def fight(bot, update, hero):
     pass
 
+def handle_fight(bot, update, hero):
+    pass
+
 def reactor(bot, update):
     try:
         hero = Hero.get(user_id=update.effective_user.id)
@@ -88,7 +93,7 @@ def reactor(bot, update):
 
 handlers = {'IDLE': handle_actions,
             'TRAVEL': handle_travel,
-            'FIGHT': fight}
+            'FIGHT': handle_fight}
 
 updater = Updater(env("API_TOKEN"))
 conv_handler = ConversationHandler(entry_points=[CommandHandler('start', start), MessageHandler(Filters.text, reactor)],
