@@ -4,7 +4,7 @@ from functools import wraps
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
-from game.models import Mob, MobInstance, ItemInstance
+from game.models import Mob, MobInstance, ItemInstance, Activity
 from peewee import IntegrityError
 import logging
 import random
@@ -88,7 +88,7 @@ def handle_travel(bot, update, hero, job_queue):
     hero.location = new_location
     hero.state = HeroState.get(name='IDLE')
     hero.save()
-    if destination.type == Location.FIGHT:
+    if hero.location.type == Location.FIGHT:
         job_queue.run_once(fight, 5, context=hero.id)
     return actions(bot, update, hero)
 
@@ -166,10 +166,9 @@ def show_inventory(bot, update, hero):
 def reactor(bot, update, hero, job_queue):
     if hero.activity:
         if hero.activity.type == Activity.RESPAWN:
-            remaining = (hero.activity.start_time + hero.activity.duration) - datetime.datetime.now()
-            assert remaining >= 0
-            update.message.reply_text("Your hero is dead. Respawn in {remaining} seconds")
-        assert False
+            remaining = (hero.activity.start_time + datetime.timedelta(seconds=hero.activity.duration)) - datetime.datetime.now()
+            assert remaining.seconds >= 0
+            update.message.reply_text(f"Your hero is dead. Respawn in {remaining.seconds} seconds")
     else:
         handlers[hero.state.name](bot, update, hero, job_queue)
 
