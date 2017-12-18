@@ -19,10 +19,16 @@ class State:
     INTERNAL = auto()
 
 def start(bot, update):
-    update.message.reply_text(
-        'Greetings, friend!\n\n'+
-        'How would you like me to call you?')
-    return State.REGISTER
+    try:
+        hero = Hero.get(user_id=update.effective_user.id)
+    except Hero.DoesNotExist:
+        update.message.reply_text(
+            'Greetings, friend!\n\n'+
+            'How would you like me to call you?')
+        return State.REGISTER
+    else:
+        update.message.reply_text(f'You are alredy registered, {hero.name}')
+        return State.INTERNAL
 
 def register(bot, update):
     update.message.reply_text(f'Welcome, {update.message.text}')
