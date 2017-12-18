@@ -24,11 +24,20 @@ def registered(func):
             hero = Hero.get(chat_id=update.effective_chat.id)
         except Hero.DoesNotExist:
             update.message.reply_text('You are not registered yet.\n'+
-                                        'Register with `/register %nickname%` command')
+                                        'Register with /register %nickname% command')
             return
         else:
             return func(bot, update, hero, *args, **kwargs)
     return wrapped
+
+def start(bot, update):
+    try:
+        hero = Hero.get(chat_id=update.effective_chat.id)
+    except Hero.DoesNotExist:
+        update.message.reply_text('You are not registered yet.\n'+
+                                    'Register with `/register %nickname%` command')
+    else:
+        update.message.reply_text(f'Name: {hero.name}\nHP:{hero.hp_value}')
 
 def register(bot, update, args, job_queue):
     nickname = args[0]
@@ -180,6 +189,7 @@ updater = Updater(env("API_TOKEN"))
 
 updater.dispatcher.add_handler(MessageHandler(Filters.text, reactor, pass_job_queue=True))
 updater.dispatcher.add_handler(CommandHandler('register', register, pass_args=True, pass_job_queue=True))
+updater.dispatcher.add_handler(CommandHandler('start', start))
 updater.dispatcher.add_handler(CommandHandler('cancel', cancel))
 updater.dispatcher.add_handler(CommandHandler('inventory', show_inventory))
 
