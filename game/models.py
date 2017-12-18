@@ -2,6 +2,7 @@ import datetime
 from enum import Enum, auto
 from peewee import *
 from playhouse.postgres_ext import BinaryJSONField
+from playhouse.fields import ManyToManyField, DeferredThroughModel
 from conf import settings
 
 
@@ -99,12 +100,9 @@ class HeroStateTransition(Model):
             (("from_state", "to_state"), True),
         )
 
-
 class Mob(Model):
     name = CharField()
-    location = ForeignKeyField(Location, related_name="mobs")
-    hp = IntegerField(constraints=[Check("hp > 0")], default=100)
-    population = IntegerField(constraints=[Check("population > 0")])
+    hp_base = IntegerField(constraints=[Check("hp_base > 0")])
     damage = IntegerField(constraints=[Check("damage > 0")])
     critical = IntegerField(constraints=[Check("critical > 0")])
     critical_chance = FloatField(constraints=[Check("critical_chance >= 0.0"),
@@ -116,7 +114,7 @@ class Mob(Model):
 
 class MobInstance(Model):
     type = ForeignKeyField(Mob)
-    hp = FloatField(constraints=[Check("hp > 0")])
+    hp_value = IntegerField(constraints=[Check("hp_value > 0")])
 
     class Meta:
         database = settings.DB
@@ -166,9 +164,31 @@ class Item(Model):
     value = IntegerField()
     usages = IntegerField(constraints=[Check("usages > 0")])
     price = IntegerField(constraints=[Check("price > 0")])
-    dropped_by = ForeignKeyField(Mob, related_name="drops")
-    drop_chance = FloatField(constraints=[Check("drop_chance > 0.0"),
-                                                Check("drop_chance <= 1.0")])
+
+    class Meta:
+        database = settings.DB
+
+
+class MobDwells(Model):
+    location = ForeignKeyField(Location, related_name="dwellings")
+    mob = ForeignKeyField(Mob, related_name="habitats")
+    chance = FloatField(constraints=[
+        Check("chance > 0.0"),
+        Check("chance <= 1.0")
+    ])
+
+    class Meta:
+        database = settings.DB
+
+
+class MobDrops(Model):
+    mob = ForeignKeyField(Mob, related_name="drops")
+    item = ForeignKeyField(Item, related_name="dropped_by")
+    chance = FloatField(constraints=[
+        Check("chance > 0.0"),
+        Check("chance <= 1.0")
+    ])
+
     class Meta:
         database = settings.DB
 
@@ -227,6 +247,8 @@ def create_db():
         ItemInstance.create_table()
         Action.create_table()
         ShopSlot.create_table()
+        MobDwells.create_table()
+        MobDrops.create_table()
 
 def create_hero_actions():
     with settings.DB.atomic():
@@ -253,15 +275,17 @@ def create_world():
         LocationGateway.create(from_location=first_city, to_location=shop)
         LocationGateway.create(to_location=first_city, from_location=shop)
 
-        minotaur = Mob.create(name="Minotaur", location=cave, population=1,
-                                damage=10, critical=30, critical_chance=0.3)
+        minotaur = Mob.create(name="Minotaur", damage=10, critical=30, critical_chance=0.3, hp_base=20)
 
         plain_sword = Item.create(type=Item.DAMAGE, title='Plain Sword',
-                            value=30, usages=100, price=50,
-                            dropped_by=minotaur,drop_chance=0.7)
+                            value=30, usages=100, price=50)
         plain_shield = Item.create(type=Item.GUARD, title='Plain Shield',
-                            value=20, usages=100, price=50,
-                            dropped_by=minotaur,drop_chance=0.5)
+                            value=20, usages=100, price=50)
+
+        MobDrops.create(mob=minotaur, item=plain_sword, chance=0.7)
+        MobDrops.create(mob=minotaur, item=plain_shield, chance=0.7)
+
+        MobDwells.create(mob=minotaur, location=cave, chance=1)
 
         ShopSlot.create(location=shop, item=plain_shield, count=5, price=50)
         ShopSlot.create(location=shop, item=plain_sword, count=5, price=50)

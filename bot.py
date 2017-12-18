@@ -5,7 +5,7 @@ from functools import wraps
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
-from game.models import Mob, MobInstance, ItemInstance, Activity, ShopSlot, Item
+from game.models import Mob, MobInstance, ItemInstance, Activity, ShopSlot, Item, MobDwells, MobDrops
 from peewee import IntegrityError, fn
 import logging
 import random
@@ -128,8 +128,19 @@ def fight(bot, job):
     hero = Hero.get(id=job.context)
     if hero.location.type != Location.FIGHT or hero.state.name =='FIGHT':
         return
-    minotaur = Mob.get(name='Minotaur')
-    mob = MobInstance.create(type=minotaur, hp=minotaur.hp)
+    rand = random.random()
+    start = 0
+    dwells = list(MobDwells.select().where(MobDwells.location == hero.location))
+    start = 0
+    mob_type = None
+    for dwell in dwells:
+        end = start + dwell.chance
+        if start <= rand < end:
+            mob_type = dwell.mob
+            break
+        start = end
+    assert mob_type
+    mob = MobInstance.create(type=mob_type, hp_value=mob_type.hp_base)
     hero.state = HeroState.get(name='FIGHT')
     hero.attacked_by = mob
     hero.save()
@@ -144,12 +155,16 @@ def on_kill(bot, update, hero, mob, job_queue):
     hero.attacked_by = None
     hero.save()
     mob.delete_instance()
-    for item in mob.type.drops:
-        if random.random() < item.drop_chance:
-            item_instance = ItemInstance.create(type=item,
-                                                owner=hero,
-                                                usages_left=item.usages)
-            update.message.reply_text(f"You got {item.title}")
+    dropped = []
+    for drop in mob.type.drops:
+        if random.random() < drop.chance:
+            item_instance = ItemInstance.create(
+                type=drop.item,
+                owner=hero,
+                usages_left=drop.item.usages
+            )
+            dropped.append(drop.item.title)
+    update.message.reply_text("You got " + ", ".join(dropped))
     job_queue.run_once(fight, 5, context=hero.id)
     actions(bot, update, hero)
 
@@ -168,9 +183,9 @@ def handle_fight(bot, update, hero, job_queue):
     if action == 'Attack':
         hero_dmg = hero.level * 10
         reply_text = f"You hit {mob.type.name} with {hero_dmg} dmg"
-        if mob.hp - hero_dmg <= 0:
+        if mob.hp_value - hero_dmg <= 0:
             return on_kill(bot, update, hero, mob, job_queue)
-        mob.hp -= hero_dmg
+        mob.hp_value -= hero_dmg
         mob.save()
 
         if random.random() < mob.type.critical_chance:
@@ -203,7 +218,7 @@ def handle_fight(bot, update, hero, job_queue):
         return actions(bot, update, hero)
     else:
         update.message.reply_text(f"Can't {action} now")
-    reply_text += f"\nYour HP: {hero.hp_value}\n{mob.type.name} HP: {mob.hp}"
+    reply_text += f"\nYour HP: {hero.hp_value}\n{mob.type.name} HP: {mob.hp_value}"
     update.message.reply_text(reply_text)
 
 
