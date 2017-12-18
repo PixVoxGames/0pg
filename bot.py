@@ -108,6 +108,15 @@ def handle_travel(bot, update, hero, job_queue):
         job_queue.run_once(fight, 5, context=hero.id)
     return actions(bot, update, hero)
 
+def revive(bot, job):
+    hero = Hero.get(id=job.context)
+    hero.hp_value = hero.hp_base
+    activity = hero.activity
+    hero.activity = None
+    hero.save()
+    activity.delete_instance()
+    bot.send_message(chat_id=hero.chat_id, text="You are alive!")
+
 def fight(bot, job):
     hero = Hero.get(id=job.context)
     if hero.location.type != Location.FIGHT or hero.state.name =='FIGHT':
@@ -137,6 +146,15 @@ def on_kill(bot, update, hero, mob, job_queue):
     job_queue.run_once(fight, 5, context=hero.id)
     actions(bot, update, hero)
 
+def on_death(bot, update, hero, mob, job_queue):
+    update.message.reply_text(f"You were killed by {mob.type.name}\nRespawn in 30 secs")
+    hero.activity = Activity.create(type=Activity.RESPAWN, duration=30)
+    hero.attacked_by = None
+    hero.state = HeroState.get(name='IDLE')
+    hero.save()
+    mob.delete_instance()
+    job_queue.run_once(revive, 30, context=hero.id)
+
 def handle_fight(bot, update, hero, job_queue):
     action = update.message.text
     mob = hero.attacked_by
@@ -153,6 +171,8 @@ def handle_fight(bot, update, hero, job_queue):
         else:
             mob_dmg = mob.type.damage
         update.message.reply_text(f"{mob.type.name} hits you with {mob_dmg} dmg")
+        if hero.hp_value - mob_dmg <= 0:
+            return on_death(bot, update, hero, mob, job_queue)
         hero.hp_value -= mob_dmg
         hero.save()
     elif action == 'Guard':
@@ -163,6 +183,8 @@ def handle_fight(bot, update, hero, job_queue):
             mob_dmg = mob.type.damage
         mob_dmg = max(0, mob_dmg - hero.level * 10)  # replace with shield def
         update.message.reply_text(f"{mob.type.name} hits you with {mob_dmg} dmg")
+        if hero.hp_value - mob_dmg <= 0:
+            return on_death(bot, update, hero, mob, job_queue)
         hero.hp_value -= mob_dmg
         hero.save()
     elif action == 'Run away':
@@ -241,7 +263,6 @@ def handle_shopping(bot, update, hero, job_queue):
         else:
             update.message.reply_text("I didn't understood you")
     return shop_actions(bot, update, hero)
-
 
 @registered
 def cancel(bot, update, hero):
