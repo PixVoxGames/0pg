@@ -3,8 +3,6 @@ from enum import Enum, auto
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
-import locations.town
-import locations.dungeon
 import logging
 
 # Enable logging
@@ -98,8 +96,6 @@ handlers = {'IDLE': handle_actions,
 updater = Updater(env("API_TOKEN"))
 conv_handler = ConversationHandler(entry_points=[CommandHandler('start', start), MessageHandler(Filters.text, reactor)],
         states={
-            #            **locations.town.handlers,
-            # **locations.dungeon.handlers,
             State.REGISTER:[MessageHandler(Filters.text, register)],
             State.INTERNAL:[MessageHandler(Filters.text, reactor)]
             }, fallbacks=[])
