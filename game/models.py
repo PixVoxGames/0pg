@@ -43,6 +43,11 @@ class Location(Model):
     description = TextField()
     group = ForeignKeyField(LocationGroup, null=True, related_name="locations")
     is_enabled = BooleanField(default=False)
+    enter_price = IntegerField(default=0)
+
+    def link_with(self, location):
+        LocationGateway.create(from_location=self, to_location=location)
+        LocationGateway.create(to_location=self, from_location=location)
 
     def __hash__(self):
         return hash(self.id)
@@ -71,9 +76,11 @@ class LocationGateway(Model):
 
 class Activity(Model):
     RESPAWN = 0
+    HEALING = 1
 
     TYPES = (
         (RESPAWN, "RESPAWN"),
+        (RESPAWN, "HEALING"),
     )
 
     type = SmallIntegerField(choices=TYPES)
@@ -143,6 +150,9 @@ class Hero(Model):
     @property
     def respawn_time(self):
         return 5 + 5 * self.level
+
+    def get_full_recover_time(self):
+        return 15 * (self.hp_base - self.hp_value) / 5
 
     class Meta:
         database = settings.DB
@@ -256,6 +266,7 @@ def create_hero_actions():
         travel = HeroState.create(name="TRAVEL")
         fight = HeroState.create(name="FIGHT")
         HeroState.create(name="SHOPPING")
+        HeroState.create(name="HEALING")
         HeroStateTransition.create(from_state=idle, to_state=travel)
         HeroStateTransition.create(to_state=idle, from_state=travel)
         HeroStateTransition.create(from_state=idle, to_state=fight)
@@ -269,11 +280,11 @@ def create_world():
                         description="Small creatures lurk within.")
         shop = Location.create(type=Location.SHOP, name="Market",
                         description="A lot of people here...")
-        LocationGateway.create(from_location=first_city, to_location=cave)
-        LocationGateway.create(to_location=first_city, from_location=cave)
-
-        LocationGateway.create(from_location=first_city, to_location=shop)
-        LocationGateway.create(to_location=first_city, from_location=shop)
+        tavern = Location.create(type=Location.HEALING, name="Tavern",
+                        description="You can heal here")
+        first_city.link_with(cave)
+        first_city.link_with(shop)
+        first_city.link_with(tavern)
 
         minotaur = Mob.create(name="Minotaur", damage=10, critical=30, critical_chance=0.3, hp_base=20)
 

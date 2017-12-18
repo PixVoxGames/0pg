@@ -57,6 +57,7 @@ available_actions = {
     Location.START: ["Travel"],
     Location.FIGHT: ["Leave"],
     Location.SHOP: ["Shop", "Travel"],
+    Location.HEALING: ["Heal", "Travel"]
 }
 
 def actions(bot, update, hero):
@@ -80,6 +81,22 @@ def handle_actions(bot, update, hero, job_queue):
         hero.state = HeroState.get(name='SHOPPING')
         hero.save()
         return shop_actions(bot, update, hero)
+    elif query == 'Heal':
+        hero.state = HeroState.get(name="HEALING")
+        hero.activity = Activity.create(type=Activity.HEALING, duration=hero.get_full_recover_time())
+        hero.save()
+        update.message.reply_text(f"Your hero is recovering now... Return back in {int(hero.activity.duration)} seconds")
+        job_queue.run_once(do_heal, hero.activity.duration, context=hero.id)
+
+
+def do_heal(bot, job):
+    hero = Hero.get(id=job.context)
+    hero.activity = None
+    hero.hp_value = hero.hp_base
+    hero.state = HeroState.get(name="IDLE")
+    hero.save()
+    bot.send_message(chat_id=hero.chat_id, text=f"Your hero recovered!")
+    return actions(bot, None, hero)
 
 
 def travel(bot, update, hero, job_queue):
@@ -109,7 +126,7 @@ def handle_travel(bot, update, hero, job_queue):
     hero.state = HeroState.get(name='IDLE')
     hero.save()
     if hero.location.type == Location.FIGHT:
-        job_queue.run_once(fight, 5, context=hero.id)
+        job_queue.run_once(fight, 0.1, context=hero.id)
     return actions(bot, update, hero)
 
 def revive(bot, job):
@@ -121,7 +138,7 @@ def revive(bot, job):
     hero.location = Location.select().where(Location.type == Location.START).order_by(fn.Random()).limit(1).get()
     hero.save()
     activity.delete_instance()
-    bot.send_message(chat_id=hero.chat_id, text=f"You are respawned in {hero.location.name}!")
+    bot.send_message(chat_id=hero.chat_id, text=f"You respawned in {hero.location.name}!")
     return actions(bot, None, hero)
 
 def fight(bot, job):
