@@ -53,4 +53,27 @@
         </ul>
 </p>
 {% endif %}
+{% if location.type == location.SHOP %}
+<h4>Shop info</h4>
+<div class="table-responsive">
+<table class="table table-striped">
+<thead>
+    <tr>
+      <th>Item</th>
+      <th>Price</th>
+      <th>Count</th>
+    </tr>
+</thead>
+<tbody>
+{% for slot in location.shop_slots %}
+    <tr>
+      <td><a href="/items/{{ slot.item.id }}">{{ slot.item.title }}</a></td>
+      <td>{{ slot.price }}</td>
+      <td>{{ slot.count }}</td>
+    </tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% endif %}
 {% endblock %}

@@ -27,12 +27,14 @@ class Location(Model):
     EMPTY = 1
     FIGHT = 2
     HEALING = 3
+    SHOP = 4
 
     TYPES = (
         (START, "START"),
         (EMPTY, "EMPTY"),
         (FIGHT, "FIGHT"),
         (HEALING, "HEALING"),
+        (SHOP, "SHOP")
     )
 
     type = SmallIntegerField(choices=TYPES)
@@ -125,17 +127,20 @@ class Hero(Model):
     state = ForeignKeyField(HeroState)
     activity = ForeignKeyField(Activity, null=True)
     location = ForeignKeyField(Location)
-    gold = IntegerField(default=0)
-    exp = IntegerField(default=0, constraints=[Check('exp < 1000')])
-    level = IntegerField(default=1)
-    hp_base = FloatField(default=100)
-    hp_value = FloatField(default=100)
+    gold = IntegerField(default=100)
+    xp_value = IntegerField(default=0)
+    hp_base = IntegerField(default=100)
+    hp_value = IntegerField(default=100)
     attacked_by = ForeignKeyField(MobInstance, null=True)
     last_update = DateTimeField(default=datetime.datetime.now)
 
     chat_id = IntegerField()
     registration_time = DateTimeField(default=datetime.datetime.now)
     last_message_at = DateTimeField(null=True)
+
+    @property
+    def level(self):
+        return self.xp_value // 1000 + 1
 
     class Meta:
         database = settings.DB
@@ -174,6 +179,16 @@ class ItemInstance(Model):
         database = settings.DB
 
 
+class ShopSlot(Model):
+    location = ForeignKeyField(Location, related_name="shop_slots")
+    item = ForeignKeyField(Item)
+    count = IntegerField(constraints=[Check("count >= 0")]) # warning: must be >=!
+    price = IntegerField(constraints=[Check("price > 0")])
+
+    class Meta:
+        database = settings.DB
+
+
 class Action(Model):
     MONEY = 0
     LOOT = 1
@@ -206,12 +221,14 @@ def create_db():
         Item.create_table()
         ItemInstance.create_table()
         Action.create_table()
+        ShopSlot.create_table()
 
 def create_hero_actions():
     with settings.DB.atomic():
         idle = HeroState.create(name="IDLE")
         travel = HeroState.create(name="TRAVEL")
         fight = HeroState.create(name="FIGHT")
+        HeroState.create(name="SHOPPING")
         HeroStateTransition.create(from_state=idle, to_state=travel)
         HeroStateTransition.create(to_state=idle, from_state=travel)
         HeroStateTransition.create(from_state=idle, to_state=fight)
@@ -223,15 +240,23 @@ def create_world():
                         description="Every adventure starts there.")
         cave = Location.create(type=Location.FIGHT, name="Goblin's Cave",
                         description="Small creatures lurk within.")
+        shop = Location.create(type=Location.SHOP, name="Market",
+                        description="A lot of people here...")
         LocationGateway.create(from_location=first_city, to_location=cave)
         LocationGateway.create(to_location=first_city, from_location=cave)
+
+        LocationGateway.create(from_location=first_city, to_location=shop)
+        LocationGateway.create(to_location=first_city, from_location=shop)
 
         minotaur = Mob.create(name="Minotaur", location=cave, population=1,
                                 damage=10, critical=30, critical_chance=0.3)
 
-        Item.create(type=Item.DAMAGE, title='Plain Sword',
+        plain_sword = Item.create(type=Item.DAMAGE, title='Plain Sword',
                             value=30, usages=100, price=50,
                             dropped_by=minotaur,drop_chance=0.7)
-        Item.create(type=Item.GUARD, title='Plain Shield',
+        plain_shield = Item.create(type=Item.GUARD, title='Plain Shield',
                             value=20, usages=100, price=50,
                             dropped_by=minotaur,drop_chance=0.5)
+
+        ShopSlot.create(location=shop, item=plain_shield, count=5, price=50)
+        ShopSlot.create(location=shop, item=plain_sword, count=5, price=50)

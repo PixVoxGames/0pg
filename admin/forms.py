@@ -64,3 +64,13 @@ class ItemForm(FlaskForm):
 
     def populate_obj(self, obj):
         obj.type = self.data["type"]
+
+
+class HeroForm(FlaskForm):
+    hp_value = IntegerField("HP")
+    gold = IntegerField("Gold")
+
+    def populate_obj(self, obj):
+        obj.hp_value = self.data["hp_value"]
+        obj.gold = self.data["gold"]
+        obj.save()

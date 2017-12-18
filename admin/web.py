@@ -185,6 +185,19 @@ def heroes_add_item(hid):
     })
 
 
+@app.route("/heroes/<int:hid>/edit", methods=["GET", "POST"])
+def heroes_edit(hid):
+    hero = Hero.get(id=hid)
+    form = HeroForm(obj=hero)
+    if request.method == "POST" and form.validate_on_submit():
+        form.populate_obj(hero)
+        hero.save()
+        return redirect(f"/heroes/{hero.id}")
+    return render("heroes/edit.html", {
+        "form": form
+    })
+
+
 @app.route("/heroes/<int:hid>/new-activity", methods=["GET", "POST"])
 def heroes_new_activity(hid):
     hero = Hero.select().where(Hero.id == hid).get()

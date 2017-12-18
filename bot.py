@@ -4,7 +4,7 @@ from functools import wraps
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
-from game.models import Mob, MobInstance, ItemInstance, Activity
+from game.models import Mob, MobInstance, ItemInstance, Activity, ShopSlot, Item
 from peewee import IntegrityError
 import logging
 import random
@@ -52,8 +52,11 @@ def register(bot, update, args, job_queue):
         update.message.reply_text(f'Welcome, {nickname}')
         actions(bot, update, hero)
 
-available_actions = {Location.START: ["Travel"],
-                        Location.FIGHT: ["Leave"]}
+available_actions = {
+    Location.START: ["Travel"],
+    Location.FIGHT: ["Leave"],
+    Location.SHOP: ["Shop", "Travel"],
+}
 
 def actions(bot, update, hero):
     replies = ReplyKeyboardMarkup([available_actions[hero.location.type]],
@@ -69,6 +72,10 @@ def handle_actions(bot, update, hero, job_queue):
         return actions(bot, update, hero)
     if query == 'Travel' or query == 'Leave':
         return travel(bot, update, hero, job_queue)
+    elif query == 'Shop':
+        hero.state = HeroState.get(name='SHOPPING')
+        hero.save()
+        return shop_actions(bot, update, hero)
 
 
 def travel(bot, update, hero, job_queue):
@@ -168,6 +175,73 @@ def handle_fight(bot, update, hero, job_queue):
     else:
         update.message.reply_text(f"Can't {action} now")
 
+
+def shop_actions(bot, update, hero):
+    actions = ReplyKeyboardMarkup(
+        [
+            [f"Buy '{slot.item.title}'" for slot in hero.location.shop_slots],
+            ["Leave"]
+        ],
+        one_time_keyboard=True,
+        resize_keyboard=True
+    )
+    update.message.reply_text(
+        f"You have {hero.gold} gold. What do you want?",
+        reply_markup=actions
+    )
+
+
+def handle_shopping(bot, update, hero, job_queue):
+    action = update.message.text.split(" ", 1)
+    if len(action) == 1 and action[0].lower() == "leave":
+        hero.state = HeroState.get(name="IDLE")
+        hero.save()
+        return actions(bot, update, hero)
+    if len(action) != 2:
+        update.message.reply_text("I didn't understood you")
+        return shop_actions(bot, update, hero)
+
+    action, request = action
+    try:
+        request = request[1:-1]
+        requested_item = Item.get(title=request)
+    except Item.DoesNotExist:
+        update.message.reply_text(f"Cannot find item '{request}'")
+    else:
+        if action.lower() == "buy":
+            updated = ShopSlot.update(count=ShopSlot.count - 1).where(
+                (ShopSlot.count > 0) &
+                (ShopSlot.item == requested_item)
+            ).execute()
+            if updated == 1:
+                slot = ShopSlot.get(item=requested_item)
+                updated = Hero.update(gold=Hero.gold - slot.price).where(
+                    (Hero.id == hero.id) &
+                    (Hero.gold >= slot.price)
+                ).execute()
+                if updated == 1:
+                    item = ItemInstance.create(
+                        type=requested_item,
+                        owner=hero,
+                        usages_left=requested_item.usages
+                    )
+                    update.message.reply_text(f"You bought '{item.type.title}'")
+                    if slot.count == 0:
+                        slot.delete_instance()
+                else:
+                    update.message.reply_text(
+                        f"You don't have enough money, you have: {hero.gold}, needed: {slot.price}"
+                    )
+                    ShopSlot.update(count=ShopSlot.count + 1).where(ShopSlot.id == slot.id)
+            else:
+                update.message.reply_text(f"Shop has no item '{request}'")
+        elif action.lower() == "sell":
+            pass
+        else:
+            update.message.reply_text("I didn't understood you")
+    return shop_actions(bot, update, hero)
+
+
 @registered
 def cancel(bot, update, hero):
     if hero.state.name == 'IDLE':
@@ -178,7 +252,6 @@ def cancel(bot, update, hero):
         hero.state = HeroState.get(name='IDLE')
         hero.save()
         return actions(bot, update, hero)
-
 
 @registered
 def show_inventory(bot, update, hero):
@@ -201,7 +274,8 @@ def reactor(bot, update, hero, job_queue):
 
 handlers = {'IDLE': handle_actions,
             'TRAVEL': handle_travel,
-            'FIGHT': handle_fight}
+            'FIGHT': handle_fight,
+            'SHOPPING': handle_shopping}
 
 updater = Updater(env("API_TOKEN"))
 

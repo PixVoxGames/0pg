@@ -15,8 +15,8 @@ function reset_location() {
 <div class="text-center"><h3>{{ hero.name }}</h3></div>
 <div class="text-right">
     <div>
-        <a href="/heroes/{{ hero.id }}/new-activity">Change activity</a>,
-        <a href="">change location</a>,
+        <a href="/heroes/{{ hero.id }}/edit">Edit</a>,
+        <a href="/heroes/{{ hero.id }}/new-activity">change activity</a>,
         <a href="/heroes/{{ hero.id }}/add-item">add item</a>
     </div>
 </div>
@@ -40,12 +40,8 @@ function reset_location() {
     <td><a href="/locations/{{ hero.location.id }}">{{ hero.location }}</a></td>
 </tr>
 <tr>
-    <td>HP/Mana</td>
-    <td><span class="text-danger font-weight-bold">{{ hero.hp_value }}</span>/<span class="text-primary font-weight-bold">{{ hero.mana_value }}</span></td>
-</tr>
-<tr>
-    <td>Base HP/Base Mana</td>
-    <td><span class="text-danger font-weight-bold">{{ hero.hp_base }}</span>/<span class="text-primary font-weight-bold">{{ hero.mana_base }}</span></td>
+    <td>HP/Base HP</td>
+    <td><span class="text-danger font-weight-bold">{{ hero.hp_value }}</span>/<span class="text-danger font-weight-bold">{{ hero.hp_base }}</span></td>
 </tr>
 <tr>
     <td>Gold</td>
@@ -72,7 +68,7 @@ function reset_location() {
 <h2>Inventory</h2>
 <ul>
 {% for item in hero.items %}
-    <li><a href="/items/{{ item.id }}">{{ item.type }}</a></li>
+    <li><a href="/items/{{ item.id }}">{{ item.type.title }}</a></li>
 {% endfor %}
 </ul>
 </div>
