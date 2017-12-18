@@ -35,7 +35,7 @@ def start(bot, update):
         hero = Hero.get(chat_id=update.effective_chat.id)
     except Hero.DoesNotExist:
         update.message.reply_text('You are not registered yet.\n'+
-                                    'Register with `/register %nickname%` command')
+                                    'Register with /register %nickname% command')
     else:
         update.message.reply_text(f'Name: {hero.name}\nHP:{hero.hp_value}')
 
