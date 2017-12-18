@@ -204,6 +204,12 @@ def heroes_new_activity(hid):
     })
 
 
+@app.route("/heroes/<int:hid>/reset-activity", methods=["GET", "POST"])
+def heroes_reset_activity(hid):
+    Hero.update(activity=None).where(Hero.id == hid).execute()
+    return jsonify({"msg": "ok"})
+
+
 @app.route("/items/<int:iid>", methods=["GET", "POST"])
 def items_default(iid):
     item = Item.select().where(Item.id == iid).get()
