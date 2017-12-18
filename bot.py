@@ -3,6 +3,7 @@ from enum import Enum, auto
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
+from game.models import Mob, MobInstance
 import logging
 
 # Enable logging
@@ -81,13 +82,49 @@ def handle_travel(bot, update, hero):
     hero.location = destination
     hero.state = HeroState.get(name='IDLE')
     hero.save()
+    if destination.type == Location.FIGHT:
+        #job_queue.run_once(fight, 10)
+        pass
     return actions(bot, update, hero)
 
 def fight(bot, update, hero):
-    pass
+    minotaur = Mob.get(name='Minotaur')
+    mob = MobInstance.create(type=minotaur, hp=minotaur.hp)
+    hero.state = HeroState.get(name='FIGHT')
+    hero.attacked_by = mob
+    hero.save()
+    update.message.reply_text(f"You have encountered {mob.type.name}",
+                                reply_markup=ReplyKeyboardMarkup([["Attack", "Guard", "Run away"]],
+                                resize_keyboard=True))
 
 def handle_fight(bot, update, hero):
-    pass
+    action = update.message.text
+    mob = hero.attacked_by
+    if action == 'Attack':
+        if mob.hp - 50 <= 0:
+            update.message.reply_text(f"You killed {mob.type.name}")
+            hero.state = HeroState.get(name='IDLE')
+            hero.save()
+            return actions(bot, update, hero)
+        mob.hp -= 50
+        mob.save()
+        update.message.reply_text(f"You hit {mob.type.name} with 50 dmg")
+        hero.hp_value -= 10
+        hero.save()
+        update.message.reply_text(f"{mob.type.name} hits you with 10 dmg")
+    elif action == 'Guard':
+        hero.hp_value -= 5
+        hero.save()
+        update.message.reply_text(f"{mob.type.name} hits you with 5 dmg")
+    elif action == 'Run away':
+        update.message.reply_text("You ran in fear.")
+        hero.state = HeroState.get(name='IDLE')
+        hero.attacked_by = None
+        hero.save()
+        mob.delete_instance()
+        return
+    else:
+        update.message.reply_text(f"Can't {action} now")
 
 def reactor(bot, update):
     try:

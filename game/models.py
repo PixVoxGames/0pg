@@ -97,6 +97,29 @@ class HeroStateTransition(Model):
             (("from_state", "to_state"), True),
         )
 
+
+class Mob(Model):
+    name = CharField()
+    location = ForeignKeyField(Location, related_name="mobs")
+    hp = FloatField(constraints=[Check("hp > 0")], default=100)
+    population = IntegerField(constraints=[Check("population > 0")])
+    damage = IntegerField(constraints=[Check("damage > 0")])
+    critical = IntegerField(constraints=[Check("critical > 0")])
+    critical_chance = FloatField(constraints=[Check("critical_chance >= 0.0"),
+                                                Check("critical_chance <= 1.0")])
+
+    class Meta:
+        database = settings.DB
+
+
+class MobInstance(Model):
+    type = ForeignKeyField(Mob)
+    hp = FloatField(constraints=[Check("hp > 0")])
+
+    class Meta:
+        database = settings.DB
+
+
 class Hero(Model):
     name = CharField(unique=True)
     state = ForeignKeyField(HeroState)
@@ -107,25 +130,12 @@ class Hero(Model):
     sword_exp = IntegerField(default=0)
     hp_base = FloatField(default=100)
     hp_value = FloatField(default=100)
+    attacked_by = ForeignKeyField(MobInstance, null=True)
     last_update = DateTimeField(default=datetime.datetime.now)
 
     user_id = IntegerField()
     registration_time = DateTimeField(default=datetime.datetime.now)
     last_message_at = DateTimeField(null=True)
-
-    class Meta:
-        database = settings.DB
-
-
-class Mob(Model):
-    name = CharField()
-    location = ForeignKeyField(Location, related_name="mobs")
-    hp = FloatField(constraints=[Check("hp > 0")])
-    population = IntegerField(constraints=[Check("population > 0")])
-    damage = IntegerField(constraints=[Check("damage > 0")])
-    critical = IntegerField(constraints=[Check("critical > 0")])
-    critical_chance = FloatField(constraints=[Check("critical_chance >= 0.0"),
-                                                Check("critical_chance <= 1.0")])
 
     class Meta:
         database = settings.DB
@@ -190,8 +200,9 @@ def create_db():
         Activity.create_table()
         HeroState.create_table()
         HeroStateTransition.create_table()
-        Hero.create_table()
         Mob.create_table()
+        MobInstance.create_table()
+        Hero.create_table()
         ItemPrototype.create_table()
         Item.create_table()
         Action.create_table()
@@ -214,3 +225,6 @@ def create_world():
                         description="Small creatures lurk within.")
         LocationGateway.create(from_location=first_city, to_location=cave)
         LocationGateway.create(to_location=first_city, from_location=cave)
+
+        Mob.create(name="Minotaur", location=cave, population=1,
+                    damage=10, critical=30, critical_chance=0.3)
