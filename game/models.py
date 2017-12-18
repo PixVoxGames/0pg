@@ -141,7 +141,7 @@ class Hero(Model):
         database = settings.DB
 
 
-class ItemPrototype(Model):
+class Item(Model):
     DAMAGE = 0
     GUARD = 1
     HEAL = 2
@@ -164,8 +164,8 @@ class ItemPrototype(Model):
         database = settings.DB
 
 
-class Item(Model):
-    prototype = ForeignKeyField(ItemPrototype)
+class ItemInstance(Model):
+    type = ForeignKeyField(Item)
     owner = ForeignKeyField(Hero, related_name="items")
     usages_left = IntegerField(constraints=[Check("usages_left > 0")])
         #Check("usages_left <= prototype.usages")])
@@ -203,8 +203,8 @@ def create_db():
         Mob.create_table()
         MobInstance.create_table()
         Hero.create_table()
-        ItemPrototype.create_table()
         Item.create_table()
+        ItemInstance.create_table()
         Action.create_table()
 
 def create_hero_actions():
@@ -226,5 +226,12 @@ def create_world():
         LocationGateway.create(from_location=first_city, to_location=cave)
         LocationGateway.create(to_location=first_city, from_location=cave)
 
-        Mob.create(name="Minotaur", location=cave, population=1,
-                    damage=10, critical=30, critical_chance=0.3)
+        minotaur = Mob.create(name="Minotaur", location=cave, population=1,
+                                damage=10, critical=30, critical_chance=0.3)
+
+        Item.create(type=Item.DAMAGE, title='Plain Sword',
+                            value=30, usages=100, price=50,
+                            dropped_by=minotaur,drop_chance=0.7)
+        Item.create(type=Item.GUARD, title='Plain Shield',
+                            value=20, usages=100, price=50,
+                            dropped_by=minotaur,drop_chance=0.5)

@@ -4,9 +4,10 @@ from functools import wraps
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
 from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
-from game.models import Mob, MobInstance
+from game.models import Mob, MobInstance, ItemInstance
 from peewee import IntegrityError
 import logging
+import random
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -108,6 +109,12 @@ def handle_fight(bot, update, hero, job_queue):
             update.message.reply_text(f"You killed {mob.type.name}")
             hero.state = HeroState.get(name='IDLE')
             hero.save()
+            for item in mob.type.drops:
+                if random.random() < item.drop_chance:
+                    item_instance = ItemInstance.create(type=item,
+                                                        owner=hero,
+                                                        usages_left=item.usages)
+                    update.message.reply_text(f"You got {item.title}")
             return actions(bot, update, hero)
         mob.hp -= 50
         mob.save()
@@ -125,7 +132,7 @@ def handle_fight(bot, update, hero, job_queue):
         hero.attacked_by = None
         hero.save()
         mob.delete_instance()
-        return
+        return actions(bot, update, hero)
     else:
         update.message.reply_text(f"Can't {action} now")
 
@@ -144,7 +151,7 @@ def cancel(bot, update, hero):
 @registered
 def show_inventory(bot, update, hero):
     items = Hero.get(chat_id=update.effective_chat.id).items
-    listing = '\n'.join([f"{item.type.name}" for item in items])
+    listing = '\n'.join([f"{item.type.title}" for item in items])
     if listing == '':
         update.message.reply_text('Your inventory is empty')
     else:
