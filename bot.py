@@ -28,14 +28,15 @@ def start(bot, update):
 
 def register(bot, update):
     update.message.reply_text(f'Welcome, {update.message.text}')
-    Hero.create(name=update.message.text, hp_base=100,
+    hero = Hero.create(name=update.message.text, hp_base=100,
                 location=Location.get(type=Location.START),
                 user_id=update.effective_user.id,
                 state=HeroState.get(name='IDLE'))
+    actions(bot, update, hero)
     return State.INTERNAL
 
 def actions(bot, update, hero):
-    replies = ReplyKeyboardMarkup([[action.name for action in hero.state.actions]],
+    replies = ReplyKeyboardMarkup([[action.to_state.name for action in hero.state.actions]],
                                     one_time_keyboard=True,
                                     resize_keyboard=True)
     update.message.reply_text("What's your path?",

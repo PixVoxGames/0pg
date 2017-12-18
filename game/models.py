@@ -91,7 +91,7 @@ class HeroStateTransition(Model):
     from_state = ForeignKeyField(HeroState, related_name="actions")
     to_state = ForeignKeyField(HeroState)
 
-    class meta:
+    class Meta:
         database = settings.DB
         indexes = (
             (("from_state", "to_state"), True),
