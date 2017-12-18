@@ -20,6 +20,10 @@
     <td>{{ dict(hero.activity.TYPES)[hero.activity.type] }} {% if hero.activity %} ({{ hero.activity.duration - (now - hero.activity.start_time).seconds }} seconds left) {% endif %}</td>
 </tr>
 <tr>
+    <td>State</td>
+    <td>{{ hero.state.name }}</td>
+</tr>
+<tr>
     <td>Location</td>
     <td><a href="/locations/{{ hero.location.id }}">{{ hero.location }}</a></td>
 </tr>
