@@ -115,31 +115,48 @@ def fight(bot, job):
                         reply_markup=ReplyKeyboardMarkup([["Attack", "Guard", "Run away"]],
                         resize_keyboard=True))
 
+def on_kill(bot, update, hero, mob):
+    update.message.reply_text(f"You killed {mob.type.name}")
+    hero.state = HeroState.get(name='IDLE')
+    hero.attacked_by = None
+    hero.save()
+    mob.delete_instance()
+    for item in mob.type.drops:
+        if random.random() < item.drop_chance:
+            item_instance = ItemInstance.create(type=item,
+                                                owner=hero,
+                                                usages_left=item.usages)
+            update.message.reply_text(f"You got {item.title}")
+    actions(bot, update, hero)
+
 def handle_fight(bot, update, hero, job_queue):
     action = update.message.text
     mob = hero.attacked_by
     if action == 'Attack':
-        if mob.hp - 50 <= 0:
-            update.message.reply_text(f"You killed {mob.type.name}")
-            hero.state = HeroState.get(name='IDLE')
-            hero.save()
-            for item in mob.type.drops:
-                if random.random() < item.drop_chance:
-                    item_instance = ItemInstance.create(type=item,
-                                                        owner=hero,
-                                                        usages_left=item.usages)
-                    update.message.reply_text(f"You got {item.title}")
-            return actions(bot, update, hero)
-        mob.hp -= 50
+        hero_dmg = hero.level * 10
+        update.message.reply_text(f"You hit {mob.type.name} with {hero_dmg} dmg")
+        if mob.hp - hero_dmg <= 0:
+            return on_kill(bot, update, hero, mob)
+        mob.hp -= hero_dmg
         mob.save()
-        update.message.reply_text(f"You hit {mob.type.name} with 50 dmg")
-        hero.hp_value -= 10
+
+        if random.random() < mob.type.critical_chance:
+            mob_dmg = mob.type.critical
+        else:
+            mob_dmg = mob.type.damage
+        update.message.reply_text(f"{mob.type.name} hits you with {mob_dmg} dmg")
+        hero.hp_value -= mob_dmg
         hero.save()
-        update.message.reply_text(f"{mob.type.name} hits you with 10 dmg")
     elif action == 'Guard':
-        hero.hp_value -= 5
+        update.message.reply_text("You block next attack with a shield")
+        if random.random() < mob.type.critical_chance:
+            mob_dmg = mob.type.critical
+        else:
+            mob_dmg = mob.type.damage
+        mob_dmg = max(0, mob_dmg - hero.level * 10)  # replace with shield def
+        update.message.reply_text(f"{mob.type.name} hits you with {mob_dmg} dmg")
+        hero.hp_value -= mob_dmg
         hero.save()
-        update.message.reply_text(f"{mob.type.name} hits you with 5 dmg")
     elif action == 'Run away':
         update.message.reply_text("You ran in fear.")
         hero.state = HeroState.get(name='IDLE')
