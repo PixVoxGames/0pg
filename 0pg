@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import sys
-from game.models import create_db
+from game.models import *
 from admin.web import run_admin
 
 
@@ -11,5 +11,9 @@ if len(sys.argv) == 1:
 
 if sys.argv[1] == "createdb":
     create_db()
+elif sys.argv[1] == "createworld":
+    create_world()
+elif sys.argv[1] == "createherostates":
+    create_hero_actions()
 elif sys.argv[1] == "admin":
     run_admin()

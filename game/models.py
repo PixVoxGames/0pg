@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum, auto
 from peewee import *
 from playhouse.postgres_ext import BinaryJSONField
 from conf import settings
@@ -80,20 +81,35 @@ class Activity(Model):
         database = settings.DB
 
 
+class HeroState(Model):
+    name = CharField(unique=True)
+
+    class Meta:
+        database = settings.DB
+
+class HeroStateTransition(Model):
+    from_state = ForeignKeyField(HeroState, related_name="actions")
+    to_state = ForeignKeyField(HeroState)
+
+    class meta:
+        database = settings.DB
+        indexes = (
+            (("from_state", "to_state"), True),
+        )
+
 class Hero(Model):
     name = CharField(unique=True)
+    state = ForeignKeyField(HeroState)
     activity = ForeignKeyField(Activity, null=True)
     location = ForeignKeyField(Location)
     gold = IntegerField(default=0)
     magic_exp = IntegerField(default=0)
     sword_exp = IntegerField(default=0)
-    hp_base = FloatField(default=0)
-    hp_value = FloatField(default=0)
-    mana_base = FloatField(default=0)
-    mana_value = FloatField(default=0)
+    hp_base = FloatField(default=100)
+    hp_value = FloatField(default=100)
     last_update = DateTimeField(default=datetime.datetime.now)
 
-    chat_id = IntegerField()
+    user_id = IntegerField()
     registration_time = DateTimeField(default=datetime.datetime.now)
     last_message_at = DateTimeField(null=True)
 
@@ -103,24 +119,61 @@ class Hero(Model):
 
 class Mob(Model):
     name = CharField()
-    type = SmallIntegerField()
-    location = ForeignKeyField(Location)
-    hp = FloatField()
-    state = BinaryJSONField()
+    location = ForeignKeyField(Location, related_name="mobs")
+    hp = FloatField(constraints=[Check("hp > 0")])
+    population = IntegerField(constraints=[Check("population > 0")])
+    damage = IntegerField(constraints=[Check("damage > 0")])
+    critical = IntegerField(constraints=[Check("critical > 0")])
+    critical_chance = FloatField(constraints=[Check("critical_chance >= 0.0"),
+                                                Check("critical_chance <= 1.0")])
 
     class Meta:
         database = settings.DB
 
 
+class ItemPrototype(Model):
+    DAMAGE = 0
+    GUARD = 1
+    HEAL = 2
+
+    TYPES = (
+        (DAMAGE, "DAMAGE"),
+        (GUARD, "GUARD"),
+        (HEAL, "HEAL"),
+    )
+
+    type = SmallIntegerField(choices=TYPES)
+    title = CharField()
+    value = IntegerField()
+    usages = IntegerField(constraints=[Check("usages > 0")])
+    price = IntegerField(constraints=[Check("price > 0")])
+    dropped_by = ForeignKeyField(Mob, related_name="drops")
+    drop_chance = FloatField(constraints=[Check("drop_chance > 0.0"),
+                                                Check("drop_chance <= 1.0")])
+    class Meta:
+        database = settings.DB
+
+
 class Item(Model):
-    type = SmallIntegerField()
+    prototype = ForeignKeyField(ItemPrototype)
     owner = ForeignKeyField(Hero, related_name="items")
+    usages_left = IntegerField(constraints=[Check("usages_left > 0")])
+        #Check("usages_left <= prototype.usages")])
 
     class Meta:
         database = settings.DB
 
 
 class Action(Model):
+    MONEY = 0
+    LOOT = 1
+    FIGHT = 2
+
+    TYPES = (
+        (MONEY, "MONEY"),
+        (LOOT, "LOOT"),
+        (FIGHT, "FIGHT"),
+    )
     receiver = ForeignKeyField(Hero)
     message = TextField()
     is_notified = BooleanField(default=False)
@@ -135,7 +188,25 @@ def create_db():
         Location.create_table()
         LocationGateway.create_table()
         Activity.create_table()
+        HeroState.create_table()
+        HeroStateTransition.create_table()
         Hero.create_table()
         Mob.create_table()
+        ItemPrototype.create_table()
         Item.create_table()
         Action.create_table()
+
+def create_hero_actions():
+    with settings.DB.atomic():
+        idle = HeroState.create(name="IDLE")
+        travel = HeroState.create(name="TRAVEL")
+        fight = HeroState.create(name="FIGHT")
+        HeroStateTransition.create(from_state=idle, to_state=travel)
+        HeroStateTransition.create(to_state=idle, from_state=travel)
+        HeroStateTransition.create(from_state=idle, to_state=fight)
+        HeroStateTransition.create(to_state=idle, from_state=fight)
+
+def create_world():
+    with settings.DB.atomic():
+        Location.create(type=Location.START, name="The First Town",
+                        description="Every adventure starts there.")
