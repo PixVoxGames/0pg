@@ -2,7 +2,7 @@ from envparse import env
 from enum import Enum, auto
 from telegram import ReplyKeyboardMarkup
 from telegram.ext import Updater, ConversationHandler, CommandHandler, MessageHandler, Filters
-from game.models import Hero, HeroState, HeroStateTransition, Location
+from game.models import Hero, HeroState, HeroStateTransition, Location, LocationGateway
 import locations.town
 import locations.dungeon
 import logging
@@ -67,8 +67,18 @@ def travel(bot, update, hero):
     return State.INTERNAL
 
 def handle_travel(bot, update, hero):
-    update.message.reply_text(f"You want to go {update.message.text}")
-    return State.INTERNAL
+    destination = update.message.text
+    try:
+        destination = Location.get(name=destination)
+        source = hero.location
+        LocationGateway.get(from_location=source, to_location=destination)
+    except (Location.DoesNotExist, LocationGateway.DoesNotExist):
+        update.message.reply_text(f"You can't travel to {destination} from here")
+        return travel(bot, update, hero)
+    hero.location = destination
+    hero.state = HeroState.get(name='IDLE')
+    hero.save()
+    return actions(bot, update, hero)
 
 def fight(bot, update):
     pass
@@ -86,7 +96,7 @@ handlers = {'IDLE': handle_actions,
             'FIGHT': fight}
 
 updater = Updater(env("API_TOKEN"))
-conv_handler = ConversationHandler(entry_points=[CommandHandler('start', start)],
+conv_handler = ConversationHandler(entry_points=[CommandHandler('start', start), MessageHandler(Filters.text, reactor)],
         states={
             #            **locations.town.handlers,
             # **locations.dungeon.handlers,
