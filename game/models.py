@@ -103,7 +103,7 @@ class HeroStateTransition(Model):
 class Mob(Model):
     name = CharField()
     location = ForeignKeyField(Location, related_name="mobs")
-    hp = FloatField(constraints=[Check("hp > 0")], default=100)
+    hp = IntegerField(constraints=[Check("hp > 0")], default=100)
     population = IntegerField(constraints=[Check("population > 0")])
     damage = IntegerField(constraints=[Check("damage > 0")])
     critical = IntegerField(constraints=[Check("critical > 0")])

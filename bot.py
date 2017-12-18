@@ -164,9 +164,10 @@ def on_death(bot, update, hero, mob, job_queue):
 def handle_fight(bot, update, hero, job_queue):
     action = update.message.text
     mob = hero.attacked_by
+    reply_text = None
     if action == 'Attack':
         hero_dmg = hero.level * 10
-        update.message.reply_text(f"You hit {mob.type.name} with {hero_dmg} dmg")
+        reply_text = f"You hit {mob.type.name} with {hero_dmg} dmg"
         if mob.hp - hero_dmg <= 0:
             return on_kill(bot, update, hero, mob, job_queue)
         mob.hp -= hero_dmg
@@ -176,19 +177,19 @@ def handle_fight(bot, update, hero, job_queue):
             mob_dmg = mob.type.critical
         else:
             mob_dmg = mob.type.damage
-        update.message.reply_text(f"{mob.type.name} hits you with {mob_dmg} dmg")
+        reply_text = f"{mob.type.name} hits you with {mob_dmg} dmg"
         if hero.hp_value - mob_dmg <= 0:
             return on_death(bot, update, hero, mob, job_queue)
         hero.hp_value -= mob_dmg
         hero.save()
     elif action == 'Guard':
-        update.message.reply_text("You block next attack with a shield")
+        reply_text = f"You block next attack with a shield"
         if random.random() < mob.type.critical_chance:
             mob_dmg = mob.type.critical
         else:
             mob_dmg = mob.type.damage
         mob_dmg = max(0, mob_dmg - hero.level * 10)  # replace with shield def
-        update.message.reply_text(f"{mob.type.name} hits you with {mob_dmg} dmg")
+        reply_text += f"\n{mob.type.name} hits you with {mob_dmg} dmg"
         if hero.hp_value - mob_dmg <= 0:
             return on_death(bot, update, hero, mob, job_queue)
         hero.hp_value -= mob_dmg
@@ -202,6 +203,8 @@ def handle_fight(bot, update, hero, job_queue):
         return actions(bot, update, hero)
     else:
         update.message.reply_text(f"Can't {action} now")
+    reply_text += f"\nYour HP: {hero.hp_value}\n{mob.type.name} HP: {mob.hp}"
+    update.message.reply_text(reply_text)
 
 
 def shop_actions(bot, update, hero):
