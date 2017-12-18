@@ -133,7 +133,7 @@ class Hero(Model):
     attacked_by = ForeignKeyField(MobInstance, null=True)
     last_update = DateTimeField(default=datetime.datetime.now)
 
-    user_id = IntegerField()
+    chat_id = IntegerField()
     registration_time = DateTimeField(default=datetime.datetime.now)
     last_message_at = DateTimeField(null=True)
 
