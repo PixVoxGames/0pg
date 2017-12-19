@@ -19,6 +19,8 @@
           <td class="badge badge-danger">FIGHT</td>
       {% elif location.type == 3 %}
           <td class="badge badge-success">HEALING</td>
+      {% elif location.type == 4 %}
+          <td class="badge badge-warning">MARKET</td>
       {% endif %}
       <td><code>{{ location.description }}</code></td>
     </tr>

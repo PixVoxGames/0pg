@@ -274,14 +274,15 @@ def create_hero_actions():
 
 def create_world():
     with settings.DB.atomic():
-        first_city = Location.create(type=Location.START, name="The First Town",
-                        description="Every adventure starts there.")
+        group = LocationGroup.create(name="The First Town", type=LocationGroup.TOWN, description="Every player starts here")
+        first_city = Location.create(type=Location.START, name="Main Area",
+                        description="Every adventure starts there.", group=group)
         cave = Location.create(type=Location.FIGHT, name="Goblin's Cave",
-                        description="Small creatures lurk within.")
+                        description="Small creatures lurk within.", group=group)
         shop = Location.create(type=Location.SHOP, name="Market",
-                        description="A lot of people here...")
+                        description="A lot of people here...", group=group)
         tavern = Location.create(type=Location.HEALING, name="Tavern",
-                        description="You can heal here")
+                        description="You can heal here", group=group)
         first_city.link_with(cave)
         first_city.link_with(shop)
         first_city.link_with(tavern)
