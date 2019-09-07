@@ -11,6 +11,6 @@ peewee==2.10.2
 psycopg2==2.7.3.2
 emoji==0.4.5
 python-telegram-bot==8.1.1
-Werkzeug==0.13
+Werkzeug==0.15.3
 wtf-peewee==0.2.6
 WTForms==2.1
