@@ -1,4 +1,4 @@
-certifi==2017.11.5
+certifi==2022.12.7
 click==6.7
 envparse==0.2.0
 Flask==1.0
